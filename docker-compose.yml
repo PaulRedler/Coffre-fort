@@ -1,0 +1,75 @@
+services:
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: mayan
+      POSTGRES_USER: mayan
+      POSTGRES_PASSWORD: mayanpassword
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  mayan:
+    image: mayanedms/mayanedms:latest
+    depends_on:
+      - postgres
+      - redis
+    environment:
+    
+      MAYAN_DATABASE_NAME: mayan
+      MAYAN_DATABASE_USER: mayan
+      MAYAN_DATABASE_ENGINE: django.db.backends.postgresql
+      MAYAN_DATABASE_PASSWORD: mayanpassword
+      MAYAN_DATABASE_HOST: postgres
+      MAYAN_REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    volumes:
+      - mayan_media:/var/lib/mayan
+
+  localai:
+    image: localai/localai:latest
+    environment:
+      - LOCALAI_MODELS_PATH=/models
+    volumes:
+      - ./models:/models
+    ports:
+      - "8081:8080"
+
+  backend:
+    build:
+      context: ./backend
+    ports:
+      - "4000:4000"
+    depends_on:
+      - postgres
+      - mayan
+      - localai
+
+  frontend:
+    build:
+          context: .
+          dockerfile: frontend/Dockerfile
+    ports:
+      - "3000:5173"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:21.1
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    command: start-dev
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
+  mayan_media:
+
